@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Metadata {
     name: String,
     namespace: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     labels: HashMap<String, String>,
 }
 
