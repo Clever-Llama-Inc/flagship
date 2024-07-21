@@ -33,13 +33,16 @@ pub struct DeploymentTemplate {
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentTemplateMetadata {
     namespace: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     labels: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeploymentTemplateSpec {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     containers: Vec<Container>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     volumes: Vec<Volume>,
 }
 

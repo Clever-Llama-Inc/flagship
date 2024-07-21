@@ -3,14 +3,23 @@ use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
     let stack = Stack::builder("example", Environment::Ephemeral(env!("USER").to_string()))
-        .with_resource(Resource::PosgreSQL(PostgreSQL::new(Image::new(
-            "pgvector".to_string(),
-            "v1".to_string(),
-        ))))
-        .with_resource(Resource::RabbitMQ(RabbitMQ::new(Image::new(
-            "rabbitmq".to_string(),
-            "v1".to_string(),
-        ))))
+        .with_resource(Resource::PosgreSQL(PostgreSQL::new("pgvector".to_string())))
+        .with_resource(Resource::RabbitMQ(RabbitMQ::new("rabbitmq".to_string())))
+        .with_resource(Resource::Nginx(Nginx::new("nginx".into(), 3)))
+        .with_resource(Resource::Microservice(Microservice::new(
+            "my-api".into(),
+            "v1".into(),
+            3,
+            "api".into(),
+            vec![8080],
+        )))
+        .with_resource(Resource::Microservice(Microservice::new(
+            "my-queue-consumer".into(),
+            "v1".into(),
+            3,
+            "qc".into(),
+            Vec::default(),
+        )))
         .build();
 
     let values = stack.as_k8s()?;

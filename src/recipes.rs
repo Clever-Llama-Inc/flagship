@@ -35,29 +35,28 @@ pub enum Resource {
 }
 
 #[derive(Debug, Constructor)]
-pub struct Image {
-    name: String,
-    version: String,
-}
-
-#[derive(Debug, Constructor)]
 pub struct PostgreSQL {
-    image: Image,
+    image: String,
 }
 
 #[derive(Debug, Constructor)]
 pub struct RabbitMQ {
-    image: Image,
+    image: String,
 }
 
 #[derive(Debug, Constructor)]
 pub struct Microservice {
-    image: Image,
+    image: String,
+    version: String,
+    replicas: u16,
+    role: String,
+    tcp_ports: Vec<u16>,
 }
 
 #[derive(Debug, Constructor)]
 pub struct Nginx {
-    image: Image,
+    image: String,
+    replicas: u16,
 }
 
 impl Stack {
@@ -83,7 +82,7 @@ impl Stack {
         let volume_name = vec![app_name.clone(), "vol".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
-            .with_label("app".to_string(), app_name.clone())
+            .with_label("app", &app_name)
             .build();
 
         let stateful_set = StatefulSet::new(
@@ -91,23 +90,19 @@ impl Stack {
             StatefulSetSpec::builder(
                 service_name.clone(),
                 Selector::builder()
-                    .with_match_label("app".to_string(), app_name.clone())
+                    .with_match_label("app", &app_name)
                     .build(),
                 StatefulSetSpecTemplate::new(
                     metadata.clone(),
                     StatefulSetSpecTemplateSpec::builder()
                         .with_container(
-                            Container::builder(
-                                pg.image.name.clone(),
-                                app_name.clone(),
-                                Vec::default(),
-                            )
-                            .with_port(ContainerPort::tcp(5432))
-                            .with_volume_mount(VolumeMount::new(
-                                volume_name.clone(),
-                                "/var/lib/postgresql/data".to_string(),
-                            ))
-                            .build(),
+                            Container::builder(pg.image.clone(), app_name.clone(), Vec::default())
+                                .with_port(ContainerPort::tcp(5432))
+                                .with_volume_mount(VolumeMount::new(
+                                    volume_name.clone(),
+                                    "/var/lib/postgresql/data".to_string(),
+                                ))
+                                .build(),
                         )
                         .build(),
                 ),
@@ -128,7 +123,7 @@ impl Stack {
                 .with_label("app", &app_name.clone())
                 .build(),
             ServiceSpec::builder(ServiceType::ClusterIP)
-                .with_selector("app".to_string(), app_name.clone())
+                .with_selector("app", &app_name)
                 .with_port(5432, 5432)
                 .build(),
         );
@@ -140,13 +135,13 @@ impl Stack {
     }
 
     fn rabbitmq(&self, rmq: &RabbitMQ) -> StackResult<Vec<Value>> {
-        let ns = self.namespace().join("-");
+        let ns: String = self.namespace().join("-");
         let app_name = vec![ns.clone(), "mq".to_string()].join("-");
         let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
         let volume_name = vec![app_name.clone(), "vol".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
-            .with_label("app".to_string(), app_name.clone())
+            .with_label("app", &app_name)
             .build();
 
         let stateful_set = StatefulSet::new(
@@ -154,24 +149,20 @@ impl Stack {
             StatefulSetSpec::builder(
                 service_name.clone(),
                 Selector::builder()
-                    .with_match_label("app".to_string(), app_name.clone())
+                    .with_match_label("app", &app_name)
                     .build(),
                 StatefulSetSpecTemplate::new(
                     metadata.clone(),
                     StatefulSetSpecTemplateSpec::builder()
                         .with_container(
-                            Container::builder(
-                                rmq.image.name.clone(),
-                                app_name.clone(),
-                                Vec::default(),
-                            )
-                            .with_port(ContainerPort::tcp(5672))
-                            .with_port(ContainerPort::tcp(15672))
-                            .with_volume_mount(VolumeMount::new(
-                                volume_name.clone(),
-                                "/var/lib/postgresql/data".to_string(),
-                            ))
-                            .build(),
+                            Container::builder(rmq.image.clone(), app_name.clone(), Vec::default())
+                                .with_port(ContainerPort::tcp(5672))
+                                .with_port(ContainerPort::tcp(15672))
+                                .with_volume_mount(VolumeMount::new(
+                                    volume_name.clone(),
+                                    "/var/lib/postgresql/data".to_string(),
+                                ))
+                                .build(),
                         )
                         .build(),
                 ),
@@ -192,7 +183,7 @@ impl Stack {
                 .with_label("app", &app_name.clone())
                 .build(),
             ServiceSpec::builder(ServiceType::ClusterIP)
-                .with_selector("app".to_string(), app_name.clone())
+                .with_selector("app", &app_name)
                 .with_port(5672, 5672)
                 .with_port(15672, 15672)
                 .build(),
@@ -205,11 +196,106 @@ impl Stack {
     }
 
     fn nginx(&self, nginx: &Nginx) -> StackResult<Vec<Value>> {
-        Ok(Vec::default())
+        let ns: String = self.namespace().join("-");
+        let app_name = vec![ns.clone(), "web".to_string()].join("-");
+        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
+
+        let metadata = Metadata::builder(app_name.clone(), ns.clone())
+            .with_label("app", &app_name)
+            .build();
+        let deployment = Deployment::new(
+            metadata.clone(),
+            DeploymentSpec::new(
+                nginx.replicas,
+                Selector::builder()
+                    .with_match_label("app", &app_name)
+                    .build(),
+                DeploymentTemplate::new(
+                    DeploymentTemplateMetadata::builder(ns.clone())
+                        .with_label("app", &app_name)
+                        .build(),
+                    DeploymentTemplateSpec::builder()
+                        .with_container(
+                            Container::builder(&nginx.image, &app_name, Vec::default())
+                                .with_port(ContainerPort::tcp(80))
+                                .build(),
+                        )
+                        .build(),
+                ),
+            ),
+        );
+
+        let service = Service::new(
+            Metadata::builder(service_name.clone(), ns.clone())
+                .with_label("app", &app_name)
+                .build(),
+            ServiceSpec::builder(ServiceType::LoadBalancer)
+                .with_selector("app", &app_name)
+                .with_port(80, 80)
+                .build(),
+        );
+
+        Ok(vec![
+            serde_yaml::to_value(&deployment)?,
+            serde_yaml::to_value(&service)?,
+        ])
     }
 
     fn microservice(&self, microservice: &Microservice) -> StackResult<Vec<Value>> {
-        Ok(Vec::default())
+        let ns: String = self.namespace().join("-");
+        let app_name = vec![ns.clone(), microservice.role.clone()].join("-");
+        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
+
+        let metadata = Metadata::builder(app_name.clone(), ns.clone())
+            .with_label("app", &app_name)
+            .with_label("role", &microservice.role)
+            .with_label("version", &microservice.version)
+            .build();
+        let deployment = Deployment::new(
+            metadata.clone(),
+            DeploymentSpec::new(
+                microservice.replicas,
+                Selector::builder()
+                    .with_match_label("app", &app_name)
+                    .build(),
+                DeploymentTemplate::new(
+                    DeploymentTemplateMetadata::builder(ns.clone())
+                        .with_label("app", &app_name)
+                        .build(),
+                    DeploymentTemplateSpec::builder()
+                        .with_container({
+                            let mut c = Container::builder(&microservice.image, &app_name, Vec::default());
+                            for port in &microservice.tcp_ports {
+                                c = c.with_port(ContainerPort::tcp(*port));
+                            }
+                            c.build()
+                        })
+                        .build(),
+                ),
+            ),
+        );
+
+        let mut values = Vec::default();
+        values.push(serde_yaml::to_value(&deployment)?);
+
+        if !microservice.tcp_ports.is_empty() {
+            let service = Service::new(
+                Metadata::builder(service_name.clone(), ns.clone())
+                    .with_label("app", &app_name)
+                    .build(),
+                {
+                    let mut spec = ServiceSpec::builder(ServiceType::LoadBalancer)
+                        .with_selector("app", &app_name);
+                    for port in &microservice.tcp_ports {
+                        spec = spec.with_port(*port, *port);
+                    }
+                    spec.build()
+                },
+            );
+            values.push(serde_yaml::to_value(&service)?)
+        }
+
+        Ok(values)
     }
 
     pub fn as_k8s(&self) -> StackResult<Vec<Value>> {

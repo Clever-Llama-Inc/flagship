@@ -1,9 +1,8 @@
-use std::{cell::Cell, collections::HashMap, hash::Hash};
 use derive_more::Constructor;
 use serde::{Deserialize, Serialize};
-use serde_yaml::mapping::Keys;
+use std::{cell::Cell, collections::HashMap};
 
-use super::{metadata::Metadata, selector::Selector};
+use super::metadata::Metadata;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +16,7 @@ pub struct Service {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServiceSpec {
+    #[serde(rename = "type")]
     service_type: ServiceType,
     selector: HashMap<String, String>,
     ports: Vec<ServicePort>,
@@ -30,7 +30,7 @@ pub enum ServiceType {
 }
 
 #[derive(Debug, Constructor, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ServicePort {
     port: u16,
     target_port: u16,
@@ -69,12 +69,11 @@ impl ServiceSpecBuilder for Cell<ServiceSpec> {
         spec.ports.push(ServicePort::new(port, target_port));
         Cell::new(spec)
     }
-    
-    
+
     fn build(self) -> ServiceSpec {
         self.into_inner()
     }
-    
+
     fn with_selector<S: Into<String>>(self, name: S, value: S) -> Self {
         let mut spec = self.into_inner();
         spec.selector.insert(name.into(), value.into());
