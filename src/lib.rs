@@ -1,4 +1,5 @@
 pub mod k8s;
+pub mod recipes;
 
 pub mod prelude {
     pub use crate::k8s::container::*;

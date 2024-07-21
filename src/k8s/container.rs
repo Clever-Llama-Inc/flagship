@@ -12,11 +12,20 @@ pub struct Container {
     image: String,
     image_pull_policy: String,
     name: String,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     command: Vec<String>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     ports: Vec<ContainerPort>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     resources: Option<Value>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     env: Vec<EnvironmentVariable>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     volume_mounts: Vec<VolumeMount>,
 }
 

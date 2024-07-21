@@ -1,6 +1,7 @@
-use std::cell::Cell;
+use std::{cell::Cell, collections::HashMap, hash::Hash};
 use derive_more::Constructor;
 use serde::{Deserialize, Serialize};
+use serde_yaml::mapping::Keys;
 
 use super::{metadata::Metadata, selector::Selector};
 
@@ -17,7 +18,7 @@ pub struct Service {
 #[serde(rename_all = "camelCase")]
 pub struct ServiceSpec {
     service_type: ServiceType,
-    selector: Selector,
+    selector: HashMap<String, String>,
     ports: Vec<ServicePort>,
 }
 
@@ -47,10 +48,10 @@ impl Service {
 }
 
 impl ServiceSpec {
-    pub fn builder(service_type: ServiceType, selector: Selector) -> Cell<ServiceSpec> {
+    pub fn builder(service_type: ServiceType) -> Cell<ServiceSpec> {
         Cell::new(ServiceSpec {
             service_type,
-            selector,
+            selector: HashMap::default(),
             ports: Vec::default(),
         })
     }
@@ -58,6 +59,7 @@ impl ServiceSpec {
 
 pub trait ServiceSpecBuilder {
     fn with_port(self, port: u16, target_port: u16) -> Self;
+    fn with_selector<S: Into<String>>(self, name: S, value: S) -> Self;
     fn build(self) -> ServiceSpec;
 }
 
@@ -68,7 +70,14 @@ impl ServiceSpecBuilder for Cell<ServiceSpec> {
         Cell::new(spec)
     }
     
+    
     fn build(self) -> ServiceSpec {
         self.into_inner()
+    }
+    
+    fn with_selector<S: Into<String>>(self, name: S, value: S) -> Self {
+        let mut spec = self.into_inner();
+        spec.selector.insert(name.into(), value.into());
+        Cell::new(spec)
     }
 }
