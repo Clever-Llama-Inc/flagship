@@ -39,7 +39,7 @@ pub struct ServicePort {
 impl Service {
     pub fn new(metadata: Metadata, spec: ServiceSpec) -> Self {
         Service {
-            api_version: "apps/v1".into(),
+            api_version: "v1".into(),
             kind: "Service".into(),
             metadata,
             spec,

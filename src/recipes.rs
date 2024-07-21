@@ -15,7 +15,7 @@ pub type StackResult<T> = Result<T, StackError>;
 
 #[derive(Debug, Constructor)]
 pub struct Stack {
-    name: String,
+    namespace: String,
     environment: Environment,
     resources: Vec<Resource>,
 }
@@ -62,7 +62,7 @@ pub struct Nginx {
 impl Stack {
     pub fn builder<S: Into<String>>(name: S, environment: Environment) -> Cell<Stack> {
         Cell::new(Stack {
-            name: name.into(),
+            namespace: name.into(),
             environment,
             resources: Vec::default(),
         })
@@ -70,8 +70,8 @@ impl Stack {
 
     fn namespace(&self) -> Vec<String> {
         match &self.environment {
-            Environment::Production => vec![self.name.clone()],
-            Environment::Ephemeral(name) => vec![self.name.clone(), name.clone()],
+            Environment::Production => vec![self.namespace.clone()],
+            Environment::Ephemeral(name) => vec![self.namespace.clone(), name.clone()],
         }
     }
 
@@ -98,6 +98,10 @@ impl Stack {
                         .with_container(
                             Container::builder(pg.image.clone(), app_name.clone(), Vec::default())
                                 .with_port(ContainerPort::tcp(5432))
+                                .with_env(EnvironmentVariable::new(
+                                    "POSTGRES_PASSWORD".into(),
+                                    EnvironmentValue::Static("postgres".into()),
+                                ))
                                 .with_volume_mount(VolumeMount::new(
                                     volume_name.clone(),
                                     "/var/lib/postgresql/data".to_string(),
@@ -264,7 +268,8 @@ impl Stack {
                         .build(),
                     DeploymentTemplateSpec::builder()
                         .with_container({
-                            let mut c = Container::builder(&microservice.image, &app_name, Vec::default());
+                            let mut c =
+                                Container::builder(&microservice.image, &app_name, Vec::default());
                             for port in &microservice.tcp_ports {
                                 c = c.with_port(ContainerPort::tcp(*port));
                             }
@@ -299,7 +304,11 @@ impl Stack {
     }
 
     pub fn as_k8s(&self) -> StackResult<Vec<Value>> {
-        self.resources.iter().try_fold(Vec::default(), |mut vs, r| {
+        let mut values = Vec::default();
+        let ns = serde_yaml::to_value(Namespace::new(self.namespace().join("-")))?;
+        values.push(ns);
+
+        self.resources.iter().try_fold(values, |mut vs, r| {
             let mut v = match r {
                 Resource::PosgreSQL(pg) => self.postgresql(pg)?,
                 Resource::RabbitMQ(rmq) => self.rabbitmq(rmq)?,

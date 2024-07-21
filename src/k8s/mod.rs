@@ -7,3 +7,4 @@ pub mod container;
 pub mod stateful_set;
 pub mod selector;
 pub mod service;
+pub mod namespace;

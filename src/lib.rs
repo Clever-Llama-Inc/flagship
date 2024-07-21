@@ -6,6 +6,7 @@ pub mod prelude {
     pub use crate::k8s::deployment::*;
     pub use crate::k8s::environment::*;
     pub use crate::k8s::metadata::*;
+    pub use crate::k8s::namespace::*;
     pub use crate::k8s::secret::*;
     pub use crate::k8s::selector::*;
     pub use crate::k8s::service::*;
