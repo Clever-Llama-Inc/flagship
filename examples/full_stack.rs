@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
             "v1".into(),
             3,
             "api".into(),
-            vec![8080],
+            vec![MicroservicePort::TCP { port: 8080, name: Some("web".to_string()) }],
         )))
         .with_resource(Resource::Microservice(Microservice::new(
             "my-queue-consumer".into(),

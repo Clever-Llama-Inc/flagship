@@ -50,7 +50,13 @@ pub struct Microservice {
     version: String,
     replicas: u16,
     role: String,
-    tcp_ports: Vec<u16>,
+    tcp_ports: Vec<MicroservicePort>,
+}
+
+#[derive(Debug)]
+pub enum MicroservicePort {
+    TCP { port: u16, name: Option<String> },
+    UDP { port: u16, name: Option<String> }
 }
 
 #[derive(Debug, Constructor)]
@@ -128,7 +134,7 @@ impl Stack {
                 .build(),
             ServiceSpec::builder(ServiceType::ClusterIP)
                 .with_selector("app", &app_name)
-                .with_port(5432, 5432)
+                .with_port(5432, 5432, Some("db"))
                 .build(),
         );
 
@@ -188,8 +194,8 @@ impl Stack {
                 .build(),
             ServiceSpec::builder(ServiceType::ClusterIP)
                 .with_selector("app", &app_name)
-                .with_port(5672, 5672)
-                .with_port(15672, 15672)
+                .with_port(5672, 5672, Some("amqp"))
+                .with_port(15672, 15672, Some("web"))
                 .build(),
         );
 
@@ -235,7 +241,7 @@ impl Stack {
                 .build(),
             ServiceSpec::builder(ServiceType::LoadBalancer)
                 .with_selector("app", &app_name)
-                .with_port(80, 80)
+                .with_port(80, 80, Some("web"))
                 .build(),
         );
 
@@ -271,7 +277,12 @@ impl Stack {
                             let mut c =
                                 Container::builder(&microservice.image, &app_name, Vec::default());
                             for port in &microservice.tcp_ports {
-                                c = c.with_port(ContainerPort::tcp(*port));
+                                let port = match port {
+                                    MicroservicePort::TCP { port, .. } => ContainerPort::tcp(*port),
+                                    MicroservicePort::UDP { port, .. } => ContainerPort::udp(*port),
+                                };
+        
+                                c = c.with_port(port);
                             }
                             c.build()
                         })
@@ -292,7 +303,11 @@ impl Stack {
                     let mut spec = ServiceSpec::builder(ServiceType::LoadBalancer)
                         .with_selector("app", &app_name);
                     for port in &microservice.tcp_ports {
-                        spec = spec.with_port(*port, *port);
+                        let (port, name) = match port {
+                            MicroservicePort::TCP { port, name } => (*port, name.clone()),
+                            MicroservicePort::UDP { port, name } => (*port, name.clone()),
+                        };
+                        spec = spec.with_port(port, port, name);
                     }
                     spec.build()
                 },

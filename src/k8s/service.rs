@@ -34,6 +34,8 @@ pub enum ServiceType {
 pub struct ServicePort {
     port: u16,
     target_port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>
 }
 
 impl Service {
@@ -58,15 +60,15 @@ impl ServiceSpec {
 }
 
 pub trait ServiceSpecBuilder {
-    fn with_port(self, port: u16, target_port: u16) -> Self;
+    fn with_port<S: Into<String>>(self, port: u16, target_port: u16, name: Option<S>) -> Self;
     fn with_selector<S: Into<String>>(self, name: S, value: S) -> Self;
     fn build(self) -> ServiceSpec;
 }
 
 impl ServiceSpecBuilder for Cell<ServiceSpec> {
-    fn with_port(self, port: u16, target_port: u16) -> Self {
+    fn with_port<S: Into<String>>(self, port: u16, target_port: u16, name: Option<S>) -> Self {
         let mut spec = self.into_inner();
-        spec.ports.push(ServicePort::new(port, target_port));
+        spec.ports.push(ServicePort::new(port, target_port, name.map(S::into)));
         Cell::new(spec)
     }
 
