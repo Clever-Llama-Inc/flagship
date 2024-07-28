@@ -83,9 +83,9 @@ impl Stack {
 
     fn postgresql(&self, pg: &PostgreSQL) -> StackResult<Vec<Value>> {
         let ns = self.namespace().join("-");
-        let app_name = vec![ns.clone(), "db".to_string()].join("-");
-        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
-        let volume_name = vec![app_name.clone(), "vol".to_string()].join("-");
+        let app_name = [ns.clone(), "db".to_string()].join("-");
+        let service_name = [app_name.clone(), "svc".to_string()].join("-");
+        let volume_name = [app_name.clone(), "vol".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
             .with_label("app", &app_name)
@@ -146,9 +146,9 @@ impl Stack {
 
     fn rabbitmq(&self, rmq: &RabbitMQ) -> StackResult<Vec<Value>> {
         let ns: String = self.namespace().join("-");
-        let app_name = vec![ns.clone(), "mq".to_string()].join("-");
-        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
-        let volume_name = vec![app_name.clone(), "vol".to_string()].join("-");
+        let app_name = [ns.clone(), "mq".to_string()].join("-");
+        let service_name = [app_name.clone(), "svc".to_string()].join("-");
+        let volume_name = [app_name.clone(), "vol".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
             .with_label("app", &app_name)
@@ -207,8 +207,8 @@ impl Stack {
 
     fn nginx(&self, nginx: &Nginx) -> StackResult<Vec<Value>> {
         let ns: String = self.namespace().join("-");
-        let app_name = vec![ns.clone(), "web".to_string()].join("-");
-        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
+        let app_name = [ns.clone(), "web".to_string()].join("-");
+        let service_name = [app_name.clone(), "svc".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
             .with_label("app", &app_name)
@@ -253,8 +253,8 @@ impl Stack {
 
     fn microservice(&self, microservice: &Microservice) -> StackResult<Vec<Value>> {
         let ns: String = self.namespace().join("-");
-        let app_name = vec![ns.clone(), microservice.role.clone()].join("-");
-        let service_name = vec![app_name.clone(), "svc".to_string()].join("-");
+        let app_name = [ns.clone(), microservice.role.clone()].join("-");
+        let service_name = [app_name.clone(), "svc".to_string()].join("-");
 
         let metadata = Metadata::builder(app_name.clone(), ns.clone())
             .with_label("app", &app_name)
