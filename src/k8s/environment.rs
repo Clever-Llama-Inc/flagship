@@ -8,7 +8,7 @@ pub struct EnvironmentVariable {
     value: EnvironmentValue
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum EnvironmentValue {
     Static(String),

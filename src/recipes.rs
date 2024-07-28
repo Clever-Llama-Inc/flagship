@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{cell::Cell, collections::HashMap};
 
 use crate::prelude::*;
 use derive_more::Constructor;
@@ -18,6 +18,7 @@ pub struct Stack {
     namespace: String,
     environment: Environment,
     resources: Vec<Resource>,
+    create_namespace: bool,
 }
 
 #[derive(Debug)]
@@ -50,6 +51,7 @@ pub struct Microservice {
     version: String,
     replicas: u16,
     role: String,
+    env: HashMap<String, EnvironmentValue>,
     tcp_ports: Vec<MicroservicePort>,
 }
 
@@ -66,11 +68,12 @@ pub struct Nginx {
 }
 
 impl Stack {
-    pub fn builder<S: Into<String>>(name: S, environment: Environment) -> Cell<Stack> {
+    pub fn builder<S: Into<String>>(name: S, create_namespace: bool, environment: Environment) -> Cell<Stack> {
         Cell::new(Stack {
             namespace: name.into(),
             environment,
             resources: Vec::default(),
+            create_namespace,
         })
     }
 
@@ -284,6 +287,9 @@ impl Stack {
         
                                 c = c.with_port(port);
                             }
+                            for (name, value) in microservice.env.iter() {
+                                c = c.with_env(EnvironmentVariable::new(name.clone(), value.clone()));
+                            }
                             c.build()
                         })
                         .build(),
@@ -320,8 +326,10 @@ impl Stack {
 
     pub fn as_k8s(&self) -> StackResult<Vec<Value>> {
         let mut values = Vec::default();
-        let ns = serde_yaml::to_value(Namespace::new(self.namespace().join("-")))?;
-        values.push(ns);
+        if self.create_namespace {
+            let ns = serde_yaml::to_value(Namespace::new(self.namespace().join("-")))?;
+            values.push(ns);
+        }
 
         self.resources.iter().try_fold(values, |mut vs, r| {
             let mut v = match r {
