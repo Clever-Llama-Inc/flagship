@@ -121,7 +121,6 @@ impl DeploymentTemplateSpecBuilder for Cell<DeploymentTemplateSpec> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-
     use super::*;
 
     #[test]
@@ -146,10 +145,7 @@ mod tests {
                                 "example-app",
                                 vec!["/usr/bin/app"],
                             )
-                            .with_env(EnvironmentVariable::new(
-                                "EXAMPLE_VAR".into(),
-                                EnvironmentValue::Static("example value".into()),
-                            ))
+                            .with_env(("EXAMPLE_VAR", "example value").into())
                             .with_port(ContainerPort::tcp(8080))
                             .with_volume_mount(VolumeMount::new("logs".into(), "/var/logs".into()))
                             .build(),

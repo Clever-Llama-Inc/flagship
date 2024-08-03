@@ -127,10 +127,7 @@ mod tests {
                     StatefulSetSpecTemplateSpec::builder()
                         .with_container(
                             Container::builder("pgsql", "example-db", vec!["/usr/bin/postgres"])
-                                .with_env(EnvironmentVariable::new(
-                                    "PG_USER".into(),
-                                    EnvironmentValue::Static("example".into()),
-                                ))
+                                .with_env(("PG_USER", "example").into())
                                 .with_port(ContainerPort::tcp(5432))
                                 .with_volume_mount(VolumeMount::new(
                                     "example-db-vol".into(),

@@ -1,4 +1,4 @@
-use std::{cell::Cell, collections::HashMap};
+use std::cell::Cell;
 
 use crate::prelude::*;
 use derive_more::Constructor;
@@ -51,14 +51,14 @@ pub struct Microservice {
     version: String,
     replicas: u16,
     role: String,
-    env: HashMap<String, EnvironmentValue>,
+    env: Vec<EnvironmentVariable>,
     tcp_ports: Vec<MicroservicePort>,
 }
 
 #[derive(Debug)]
 pub enum MicroservicePort {
     TCP { port: u16, name: Option<String> },
-    UDP { port: u16, name: Option<String> }
+    UDP { port: u16, name: Option<String> },
 }
 
 #[derive(Debug, Constructor)]
@@ -68,7 +68,11 @@ pub struct Nginx {
 }
 
 impl Stack {
-    pub fn builder<S: Into<String>>(name: S, create_namespace: bool, environment: Environment) -> Cell<Stack> {
+    pub fn builder<S: Into<String>>(
+        name: S,
+        create_namespace: bool,
+        environment: Environment,
+    ) -> Cell<Stack> {
         Cell::new(Stack {
             namespace: name.into(),
             environment,
@@ -107,10 +111,7 @@ impl Stack {
                         .with_container(
                             Container::builder(pg.image.clone(), app_name.clone(), Vec::default())
                                 .with_port(ContainerPort::tcp(5432))
-                                .with_env(EnvironmentVariable::new(
-                                    "POSTGRES_PASSWORD".into(),
-                                    EnvironmentValue::Static("postgres".into()),
-                                ))
+                                .with_env(("POSTGRES_PASSWORD", "postgres").into())
                                 .with_volume_mount(VolumeMount::new(
                                     volume_name.clone(),
                                     "/var/lib/postgresql/data".to_string(),
@@ -284,12 +285,14 @@ impl Stack {
                                     MicroservicePort::TCP { port, .. } => ContainerPort::tcp(*port),
                                     MicroservicePort::UDP { port, .. } => ContainerPort::udp(*port),
                                 };
-        
+
                                 c = c.with_port(port);
                             }
-                            for (name, value) in microservice.env.iter() {
-                                c = c.with_env(EnvironmentVariable::new(name.clone(), value.clone()));
+
+                            for environment_var in microservice.env.iter() {
+                                c = c.with_env(environment_var.clone())
                             }
+
                             c.build()
                         })
                         .build(),
@@ -360,3 +363,6 @@ impl StackBuilder for Cell<Stack> {
         self.into_inner()
     }
 }
+
+#[cfg(test)]
+mod tests {}
